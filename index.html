@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Проверка шаринга в MAX</title>
+  <style>
+    body { font: 16px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    label { display: block; margin: 12px 0 4px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; }
+    button { margin: 12px 8px 0 0; padding: 10px 14px; font-size: 16px; }
+    pre { background: #f2f2f2; padding: 10px; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>Проверка шаринга в MAX</h1>
+  <p>Страница ничего не отправляет на сервер и не сохраняет данные, кроме введённой ссылки в памяти телефона.</p>
+
+  <label for="link">Ссылка для отправки</label>
+  <input id="link" type="url" placeholder="https://max.ru/…?startapp=test" autocomplete="off" />
+
+  <label for="text">Текст сообщения</label>
+  <input id="text" type="text" value="Проверка отправки ссылки" autocomplete="off" />
+
+  <button id="share-both">shareMaxContent: текст и ссылка</button>
+  <button id="share-link">shareMaxContent: только ссылка</button>
+  <button id="share-text">shareMaxContent: только текст</button>
+
+  <h2>Состояние</h2>
+  <pre id="log">загрузка…</pre>
+
+  <script src="https://st.max.ru/js/max-web-app.js"></script>
+  <script>
+    var logEl = document.getElementById('log');
+    var lines = [];
+    function log(s) { lines.push(s); logEl.textContent = lines.join('\n'); }
+    function now() { return new Date().toLocaleTimeString(); }
+
+    var linkEl = document.getElementById('link');
+    var textEl = document.getElementById('text');
+    try { linkEl.value = localStorage.getItem('shareTestLink') || ''; } catch (e) {}
+    linkEl.addEventListener('input', function () {
+      try { localStorage.setItem('shareTestLink', linkEl.value); } catch (e) {}
+    });
+
+    var app = window.WebApp;
+    lines = [];
+    log('WebApp есть: ' + (app ? 'да' : 'нет (страница открыта не внутри MAX)'));
+    if (app) {
+      log('shareMaxContent: ' + typeof app.shareMaxContent);
+      log('shareContent: ' + typeof app.shareContent);
+      log('openLink: ' + typeof app.openLink);
+      var unsafe = app.initDataUnsafe || {};
+      log('start_param: ' + (unsafe.start_param === undefined ? '(не передан)' : JSON.stringify(unsafe.start_param)));
+      if (typeof app.ready === 'function') { try { app.ready(); } catch (e) { log('ready() ошибка: ' + e); } }
+    }
+
+    function run(label, params) {
+      if (!app || typeof app.shareMaxContent !== 'function') { log(now() + ' ' + label + ': метода нет'); return; }
+      try {
+        var r = app.shareMaxContent(params);
+        log(now() + ' ' + label + ': вызван, вернул ' + (r === undefined ? 'undefined' : JSON.stringify(r)));
+      } catch (e) {
+        log(now() + ' ' + label + ': ошибка ' + e);
+      }
+    }
+
+    document.getElementById('share-both').onclick = function () {
+      run('текст+ссылка', { text: textEl.value, link: linkEl.value });
+    };
+    document.getElementById('share-link').onclick = function () {
+      run('ссылка', { link: linkEl.value });
+    };
+    document.getElementById('share-text').onclick = function () {
+      run('текст', { text: textEl.value });
+    };
+  </script>
+</body>
+</html>
